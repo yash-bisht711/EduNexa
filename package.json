@@ -7,7 +7,7 @@
     "client"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev -w server\" \"npm run dev -w client\"",
+    "dev": "concurrently -k -n SERVER,CLIENT \"npm run dev -w server\" \"npm run dev -w client\"",
     "install:all": "npm install",
     "seed": "npm run seed -w server",
     "build": "npm run build -w client",
