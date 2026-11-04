@@ -1,32 +1,286 @@
-import mongoose from 'mongoose';
-const {Schema,model}=mongoose;
-const userSchema=new Schema({
-  name:{type:String,required:true,trim:true},
-  email:{type:String,required:true,unique:true,lowercase:true,trim:true},
-  passwordHash:{type:String,required:true},
-  role:{type:String,enum:['student','instructor','admin'],default:'student'},
-  bio:{type:String,default:''},
-  avatar:{type:String,default:''},
-  resetPasswordToken:String,
-  resetPasswordExpires:Date,
-  resetPasswordOtp:String
-},{timestamps:true});
-const lessonSchema=new Schema({title:{type:String,required:true},description:String,videoUrl:String,hlsUrl:String,duration:Number,order:{type:Number,default:0},resources:[{name:String,url:String}]},{_id:true});
-const courseSchema=new Schema({title:{type:String,required:true},description:{type:String,default:''},category:{type:String,default:'Development'},level:{type:String,enum:['Beginner','Intermediate','Advanced'],default:'Beginner'},thumbnail:{type:String,default:''},price:{type:Number,default:0,min:0},instructor:{type:Schema.Types.ObjectId,ref:'User',required:true},published:{type:Boolean,default:false},lessons:[lessonSchema]},{timestamps:true});
-const enrollmentSchema=new Schema({student:{type:Schema.Types.ObjectId,ref:'User',required:true},course:{type:Schema.Types.ObjectId,ref:'Course',required:true},completedLessons:[Schema.Types.ObjectId],progress:{type:Number,default:0},paid:{type:Boolean,default:false},completedAt:Date},{timestamps:true}); enrollmentSchema.index({student:1,course:1},{unique:true});
-const quizSchema=new Schema({course:{type:Schema.Types.ObjectId,ref:'Course',required:true},lessonId:Schema.Types.ObjectId,title:{type:String,required:true},questions:[{prompt:String,options:[String],correctIndex:Number,explanation:String,points:{type:Number,default:1}}]},{timestamps:true});
-const attemptSchema=new Schema({quiz:{type:Schema.Types.ObjectId,ref:'Quiz'},student:{type:Schema.Types.ObjectId,ref:'User'},answers:[Number],score:Number,total:Number,submittedAt:{type:Date,default:Date.now}});
-const liveSchema=new Schema({course:{type:Schema.Types.ObjectId,ref:'Course',required:true},instructor:{type:Schema.Types.ObjectId,ref:'User'},cohosts:[{type:Schema.Types.ObjectId,ref:'User'}],waitingRoom:{type:Boolean,default:true},title:String,description:{type:String,default:''},startsAt:Date,endsAt:Date,roomName:{type:String,unique:true},status:{type:String,enum:['scheduled','live','ended','cancelled'],default:'scheduled'},reminderSentAt:Date,startedAt:Date,endedAt:Date,recordingUrl:String,recordings:[{url:String,uploadedBy:{type:Schema.Types.ObjectId,ref:'User'},uploadedAt:{type:Date,default:Date.now},sizeMb:Number}],participantCount:{type:Number,default:0},peakViewers:{type:Number,default:0},attendees:[{type:Schema.Types.ObjectId,ref:'User'}]},{timestamps:true});
-const pollSchema=new Schema({liveClass:{type:Schema.Types.ObjectId,ref:'LiveClass',required:true,index:true},roomName:{type:String,required:true},question:{type:String,required:true,maxlength:400},options:[{text:{type:String,required:true,maxlength:200},votes:[{type:Schema.Types.ObjectId,ref:'User'}]}],status:{type:String,enum:['open','closed'],default:'open'},createdBy:{type:Schema.Types.ObjectId,ref:'User'}},{timestamps:true});
-const chatMessageSchema=new Schema({liveClass:{type:Schema.Types.ObjectId,ref:'LiveClass',required:true,index:true},roomName:{type:String,required:true},user:{type:Schema.Types.ObjectId,ref:'User'},userName:{type:String,default:''},userRole:{type:String,default:''},avatar:{type:String,default:''},kind:{type:String,enum:['chat','system'],default:'chat'},message:{type:String,required:true,maxlength:2000}},{timestamps:true});
-const paymentSchema=new Schema({student:{type:Schema.Types.ObjectId,ref:'User'},course:{type:Schema.Types.ObjectId,ref:'Course'},amount:Number,currency:{type:String,default:'INR'},providerOrderId:String,providerPaymentId:String,status:{type:String,enum:['created','paid','failed'],default:'created'},paidAt:Date},{timestamps:true});
-const aiConversationSchema=new Schema({user:{type:Schema.Types.ObjectId,ref:'User',required:true,index:true},title:{type:String,default:'New learning session'},messages:[{role:{type:String,enum:['user','assistant'],required:true},content:{type:String,required:true,maxlength:12000},createdAt:{type:Date,default:Date.now}}],context:{courseId:{type:Schema.Types.ObjectId,ref:'Course'},courseTitle:String}},{timestamps:true});
-aiConversationSchema.index({user:1,updatedAt:-1});
-const organizationSchema=new Schema({name:{type:String,required:true,trim:true,maxlength:120},slug:{type:String,required:true,unique:true,lowercase:true},owner:{type:Schema.Types.ObjectId,ref:'User',required:true},website:String,plan:{type:String,enum:['free','growth','enterprise'],default:'free'},status:{type:String,enum:['active','suspended'],default:'active'}},{timestamps:true});
-const organizationMembershipSchema=new Schema({organization:{type:Schema.Types.ObjectId,ref:'Organization',required:true},user:{type:Schema.Types.ObjectId,ref:'User',required:true},role:{type:String,enum:['owner','org_admin','instructor','learner'],default:'learner'},status:{type:String,enum:['active','invited','suspended'],default:'active'}},{timestamps:true});
-organizationMembershipSchema.index({organization:1,user:1},{unique:true});
-const reviewSchema=new Schema({course:{type:Schema.Types.ObjectId,ref:'Course',required:true},student:{type:Schema.Types.ObjectId,ref:'User',required:true},rating:{type:Number,required:true,min:1,max:5},comment:{type:String,default:''}},{timestamps:true});
-reviewSchema.index({course:1,student:1},{unique:true});
-const notificationSchema=new Schema({user:{type:Schema.Types.ObjectId,ref:'User',required:true},type:{type:String,required:true},title:{type:String,required:true},body:{type:String,default:''},read:{type:Boolean,default:false},link:{type:String,default:''}},{timestamps:true});
-notificationSchema.index({user:1,read:1});
-export const User=model('User',userSchema); export const Course=model('Course',courseSchema); export const Enrollment=model('Enrollment',enrollmentSchema); export const Quiz=model('Quiz',quizSchema); export const QuizAttempt=model('QuizAttempt',attemptSchema); export const LiveClass=model('LiveClass',liveSchema); export const ChatMessage=model('ChatMessage',chatMessageSchema); export const Poll=model('Poll',pollSchema); export const Payment=model('Payment',paymentSchema); export const AIConversation=model('AIConversation',aiConversationSchema); export const Organization=model('Organization',organizationSchema); export const OrganizationMembership=model('OrganizationMembership',organizationMembershipSchema); export const Review=model('Review',reviewSchema); export const Notification=model('Notification',notificationSchema);
+import mongoose from "mongoose";
+const { Schema, model } = mongoose;
+const userSchema = new Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    passwordHash: { type: String, required: true },
+    role: {
+      type: String,
+      enum: ["student", "instructor", "admin"],
+      default: "student",
+    },
+    bio: { type: String, default: "" },
+    avatar: { type: String, default: "" },
+    resetPasswordToken: String,
+    resetPasswordExpires: Date,
+    resetPasswordOtp: String,
+  },
+  { timestamps: true },
+);
+const lessonSchema = new Schema(
+  {
+    title: { type: String, required: true },
+    description: String,
+    videoUrl: String,
+    hlsUrl: String,
+    duration: Number,
+    order: { type: Number, default: 0 },
+    resources: [{ name: String, url: String }],
+  },
+  { _id: true },
+);
+const courseSchema = new Schema(
+  {
+    title: { type: String, required: true },
+    description: { type: String, default: "" },
+    category: { type: String, default: "Development" },
+    level: {
+      type: String,
+      enum: ["Beginner", "Intermediate", "Advanced"],
+      default: "Beginner",
+    },
+    thumbnail: { type: String, default: "" },
+    price: { type: Number, default: 0, min: 0 },
+    instructor: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    published: { type: Boolean, default: false },
+    lessons: [lessonSchema],
+  },
+  { timestamps: true },
+);
+const enrollmentSchema = new Schema(
+  {
+    student: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    course: { type: Schema.Types.ObjectId, ref: "Course", required: true },
+    completedLessons: [Schema.Types.ObjectId],
+    progress: { type: Number, default: 0 },
+    paid: { type: Boolean, default: false },
+    completedAt: Date,
+  },
+  { timestamps: true },
+);
+enrollmentSchema.index({ student: 1, course: 1 }, { unique: true });
+const quizSchema = new Schema(
+  {
+    course: { type: Schema.Types.ObjectId, ref: "Course", required: true },
+    lessonId: Schema.Types.ObjectId,
+    title: { type: String, required: true },
+    questions: [
+      {
+        prompt: String,
+        options: [String],
+        correctIndex: Number,
+        explanation: String,
+        points: { type: Number, default: 1 },
+      },
+    ],
+  },
+  { timestamps: true },
+);
+const attemptSchema = new Schema({
+  quiz: { type: Schema.Types.ObjectId, ref: "Quiz" },
+  student: { type: Schema.Types.ObjectId, ref: "User" },
+  answers: [Number],
+  score: Number,
+  total: Number,
+  submittedAt: { type: Date, default: Date.now },
+});
+const liveSchema = new Schema(
+  {
+    course: { type: Schema.Types.ObjectId, ref: "Course", required: true },
+    instructor: { type: Schema.Types.ObjectId, ref: "User" },
+    cohosts: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    waitingRoom: { type: Boolean, default: true },
+    title: String,
+    description: { type: String, default: "" },
+    startsAt: Date,
+    endsAt: Date,
+    roomName: { type: String, unique: true },
+    status: {
+      type: String,
+      enum: ["scheduled", "live", "ended", "cancelled"],
+      default: "scheduled",
+    },
+    reminderSentAt: Date,
+    startedAt: Date,
+    endedAt: Date,
+    recordingUrl: String,
+    recordings: [
+      {
+        url: String,
+        uploadedBy: { type: Schema.Types.ObjectId, ref: "User" },
+        uploadedAt: { type: Date, default: Date.now },
+        sizeMb: Number,
+      },
+    ],
+    participantCount: { type: Number, default: 0 },
+    peakViewers: { type: Number, default: 0 },
+    attendees: [{ type: Schema.Types.ObjectId, ref: "User" }],
+  },
+  { timestamps: true },
+);
+const pollSchema = new Schema(
+  {
+    liveClass: {
+      type: Schema.Types.ObjectId,
+      ref: "LiveClass",
+      required: true,
+      index: true,
+    },
+    roomName: { type: String, required: true },
+    question: { type: String, required: true, maxlength: 400 },
+    options: [
+      {
+        text: { type: String, required: true, maxlength: 200 },
+        votes: [{ type: Schema.Types.ObjectId, ref: "User" }],
+      },
+    ],
+    status: { type: String, enum: ["open", "closed"], default: "open" },
+    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+  },
+  { timestamps: true },
+);
+const chatMessageSchema = new Schema(
+  {
+    liveClass: {
+      type: Schema.Types.ObjectId,
+      ref: "LiveClass",
+      required: true,
+      index: true,
+    },
+    roomName: { type: String, required: true },
+    user: { type: Schema.Types.ObjectId, ref: "User" },
+    userName: { type: String, default: "" },
+    userRole: { type: String, default: "" },
+    avatar: { type: String, default: "" },
+    kind: { type: String, enum: ["chat", "system"], default: "chat" },
+    message: { type: String, required: true, maxlength: 2000 },
+  },
+  { timestamps: true },
+);
+const paymentSchema = new Schema(
+  {
+    student: { type: Schema.Types.ObjectId, ref: "User" },
+    course: { type: Schema.Types.ObjectId, ref: "Course" },
+    amount: Number,
+    currency: { type: String, default: "INR" },
+    providerOrderId: String,
+    providerPaymentId: String,
+    status: {
+      type: String,
+      enum: ["created", "paid", "failed"],
+      default: "created",
+    },
+    paidAt: Date,
+  },
+  { timestamps: true },
+);
+const aiConversationSchema = new Schema(
+  {
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    title: { type: String, default: "New learning session" },
+    messages: [
+      {
+        role: { type: String, enum: ["user", "assistant"], required: true },
+        content: { type: String, required: true, maxlength: 12000 },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    context: {
+      courseId: { type: Schema.Types.ObjectId, ref: "Course" },
+      courseTitle: String,
+    },
+  },
+  { timestamps: true },
+);
+aiConversationSchema.index({ user: 1, updatedAt: -1 });
+const organizationSchema = new Schema(
+  {
+    name: { type: String, required: true, trim: true, maxlength: 120 },
+    slug: { type: String, required: true, unique: true, lowercase: true },
+    owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    website: String,
+    plan: {
+      type: String,
+      enum: ["free", "growth", "enterprise"],
+      default: "free",
+    },
+    status: { type: String, enum: ["active", "suspended"], default: "active" },
+  },
+  { timestamps: true },
+);
+const organizationMembershipSchema = new Schema(
+  {
+    organization: {
+      type: Schema.Types.ObjectId,
+      ref: "Organization",
+      required: true,
+    },
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    role: {
+      type: String,
+      enum: ["owner", "org_admin", "instructor", "learner"],
+      default: "learner",
+    },
+    status: {
+      type: String,
+      enum: ["active", "invited", "suspended"],
+      default: "active",
+    },
+  },
+  { timestamps: true },
+);
+organizationMembershipSchema.index(
+  { organization: 1, user: 1 },
+  { unique: true },
+);
+const reviewSchema = new Schema(
+  {
+    course: { type: Schema.Types.ObjectId, ref: "Course", required: true },
+    student: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    rating: { type: Number, required: true, min: 1, max: 5 },
+    comment: { type: String, default: "" },
+  },
+  { timestamps: true },
+);
+reviewSchema.index({ course: 1, student: 1 }, { unique: true });
+const notificationSchema = new Schema(
+  {
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    type: { type: String, required: true },
+    title: { type: String, required: true },
+    body: { type: String, default: "" },
+    read: { type: Boolean, default: false },
+    link: { type: String, default: "" },
+  },
+  { timestamps: true },
+);
+notificationSchema.index({ user: 1, read: 1 });
+export const User = model("User", userSchema);
+export const Course = model("Course", courseSchema);
+export const Enrollment = model("Enrollment", enrollmentSchema);
+export const Quiz = model("Quiz", quizSchema);
+export const QuizAttempt = model("QuizAttempt", attemptSchema);
+export const LiveClass = model("LiveClass", liveSchema);
+export const ChatMessage = model("ChatMessage", chatMessageSchema);
+export const Poll = model("Poll", pollSchema);
+export const Payment = model("Payment", paymentSchema);
+export const AIConversation = model("AIConversation", aiConversationSchema);
+export const Organization = model("Organization", organizationSchema);
+export const OrganizationMembership = model(
+  "OrganizationMembership",
+  organizationMembershipSchema,
+);
+export const Review = model("Review", reviewSchema);
+export const Notification = model("Notification", notificationSchema);

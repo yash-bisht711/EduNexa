@@ -9,6 +9,8 @@ import { User } from '../models/index.js';
 import { auth } from '../middleware/auth.js';
 import { sendPasswordResetEmail } from '../services/email.js';
 import { publicUploadUrl } from '../services/storage.js';
+import avatarUpload from "../middleware/avatarUpload.js";
+import { uploadAvatarToCloudinary } from "../services/avatarStorage.js";
 
 const router = Router();
 
@@ -286,24 +288,59 @@ router.put('/profile', auth, async (req, res, next) => {
 });
 
 // ─── UPLOAD AVATAR PHOTO ───────────────────────────────────────────────
-router.post('/avatar', auth, upload.single('avatar'), async (req, res, next) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'Please select an image file to upload' });
+// router.post('/avatar', auth, upload.single('avatar'), async (req, res, next) => {
+//   try {
+//     if (!req.file) {
+//       return res.status(400).json({ message: 'Please select an image file to upload' });
+//     }
+
+//     const avatarUrl = publicUploadUrl(req.file.filename);
+//     req.user.avatar = avatarUrl;
+//     await req.user.save();
+
+//     res.json({
+//       message: 'Avatar photo uploaded successfully',
+//       avatar: avatarUrl,
+//       user: safe(req.user),
+//     });
+//   } catch (e) {
+//     next(e);
+//   }
+// });
+
+// UPLOAD AVATAR TO CLOUDINARY
+router.post(
+  "/avatar",
+  auth,
+  avatarUpload.single("avatar"),
+  async (req, res, next) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          message: "Please select an image file to upload",
+        });
+      }
+
+      const result = await uploadAvatarToCloudinary(
+        req.file.buffer,
+        req.user.id || req.user._id.toString()
+      );
+
+      const avatarUrl = result.secure_url;
+
+      req.user.avatar = avatarUrl;
+
+      await req.user.save();
+
+      res.json({
+        message: "Avatar photo uploaded successfully",
+        avatar: avatarUrl,
+        user: safe(req.user),
+      });
+    } catch (error) {
+      next(error);
     }
-
-    const avatarUrl = publicUploadUrl(req.file.filename);
-    req.user.avatar = avatarUrl;
-    await req.user.save();
-
-    res.json({
-      message: 'Avatar photo uploaded successfully',
-      avatar: avatarUrl,
-      user: safe(req.user),
-    });
-  } catch (e) {
-    next(e);
   }
-});
+);
 
 export default router;
