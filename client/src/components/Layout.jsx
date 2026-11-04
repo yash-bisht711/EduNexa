@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store';
 import api from '../api';
 import { connectSocket, disconnectSocket } from '../socket';
+import { getMediaUrl } from '../utils/media';
 import {
   LayoutDashboard,
   BookOpen,
@@ -89,6 +90,11 @@ export function Layout() {
   );
   const audioContextRef = useRef(null);
   const isStaff = ['instructor', 'admin'].includes(user?.role);
+
+  useEffect(() => {
+    console.log('Avatar field:', user?.avatar);
+    console.log('Resolved avatar URL:', getMediaUrl(user?.avatar));
+  }, [user]);
 
   const unlockNotificationAudio = () => {
     if (!soundEnabledRef.current) return null;
@@ -304,9 +310,12 @@ export function Layout() {
               <div className="w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-900/60 text-[#6557ed] dark:text-violet-300 font-bold grid place-items-center overflow-hidden shrink-0">
                 {user?.avatar ? (
                   <img
-                    src={user.avatar}
+                    src={getMediaUrl(user?.avatar)}
                     alt={user.name}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
                   />
                 ) : (
                   initials(user?.name)
@@ -445,9 +454,12 @@ export function Layout() {
             >
               {user?.avatar ? (
                 <img
-                  src={user.avatar}
+                  src={getMediaUrl(user?.avatar)}
                   alt={user?.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
                 />
               ) : (
                 initials(user?.name)

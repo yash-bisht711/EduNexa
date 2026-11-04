@@ -6,7 +6,10 @@ export function connectSocket(token) {
   if (!token) return null;
   if (socket && socket._authToken === token && (socket.connected || socket.active)) return socket;
   if (socket) socket.disconnect();
-  socket = io('/', { auth: { token }, transports: ['websocket', 'polling'] });
+  socket = io(import.meta.env.VITE_SOCKET_URL || '/', {
+    auth: { token },
+    transports: ['websocket', 'polling'],
+  });
   socket._authToken = token;
   return socket;
 }
